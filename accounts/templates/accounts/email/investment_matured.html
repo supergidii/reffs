@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Investment Matured</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 2px solid #4CAF50;
+        }
+        .content {
+            padding: 20px 0;
+        }
+        .summary {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .amount {
+            font-size: 24px;
+            color: #4CAF50;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #666;
+        }
+        .statement-link {
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Investment Matured!</h1>
+        </div>
+        
+        <div class="content">
+            <p>Dear {{ user.username }},</p>
+            
+            <p>Congratulations! Your investment has reached maturity. Here's a summary of your returns:</p>
+            
+            <div class="summary">
+                <p><strong>Investment ID:</strong> #{{ investment.id }}</p>
+                <p><strong>Principal Amount:</strong> ${{ investment.amount }}</p>
+                <p><strong>Interest Earned:</strong> ${{ interest_earned }}</p>
+                {% if referral_bonus %}
+                <p><strong>Referral Bonus Used:</strong> ${{ referral_bonus }}</p>
+                {% endif %}
+            </div>
+
+            <div class="amount">
+                Total Return: ${{ total_return }}
+            </div>
+
+            <p>Your investment has been added to the pairing queue. You will be notified once it's paired with another investor.</p>
+
+            <div class="statement-link">
+                <a href="{{ statement_url }}" class="button">Download Statement</a>
+            </div>
+
+            <p>You can track your investment status by logging into your account.</p>
+
+            <center>
+                <a href="{{ dashboard_url }}" class="button">View Dashboard</a>
+            </center>
+        </div>
+
+        <div class="footer">
+            <p>This is an automated message, please do not reply to this email.</p>
+            <p>If you have any questions, please contact our support team.</p>
+        </div>
+    </div>
+</body>
+</html> 

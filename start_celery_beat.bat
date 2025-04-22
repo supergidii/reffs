@@ -1,0 +1,3 @@
+@echo off
+echo Starting Celery beat scheduler...
+celery -A referral_system beat -l info 

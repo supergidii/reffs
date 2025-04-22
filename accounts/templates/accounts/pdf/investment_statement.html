@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Investment Statement</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+        }
+        .statement-info {
+            margin-bottom: 30px;
+        }
+        .statement-details {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        .statement-details th, .statement-details td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        .statement-details th {
+            background-color: #f5f5f5;
+            text-align: left;
+        }
+        .summary-box {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+        }
+        .footer {
+            margin-top: 50px;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ site_name }}</h1>
+        <h2>Investment Statement</h2>
+    </div>
+
+    <div class="statement-info">
+        <p><strong>Statement Date:</strong> {{ generated_date|date:"F j, Y" }}</p>
+        <p><strong>Investment ID:</strong> {{ investment.id }}</p>
+        <p><strong>Investor Name:</strong> {{ user.username }}</p>
+    </div>
+
+    <div class="summary-box">
+        <h3>Investment Summary</h3>
+        <table class="statement-details">
+            <tr>
+                <th>Principal Amount</th>
+                <td>${{ investment.amount|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <th>Interest Earned</th>
+                <td>${{ interest_earned|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <th>Referral Bonus Applied</th>
+                <td>${{ referral_bonus|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <th>Total Return Amount</th>
+                <td>${{ return_amount|floatformat:2 }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="statement-details">
+        <h3>Investment Details</h3>
+        <table class="statement-details">
+            <tr>
+                <th>Investment Date</th>
+                <td>{{ investment.created_at|date:"F j, Y" }}</td>
+            </tr>
+            <tr>
+                <th>Maturity Period</th>
+                <td>{{ investment.maturity_period }} days</td>
+            </tr>
+            <tr>
+                <th>Maturity Date</th>
+                <td>{{ maturity_date|date:"F j, Y" }}</td>
+            </tr>
+            <tr>
+                <th>Status</th>
+                <td>{{ investment.status|title }}</td>
+            </tr>
+            {% if investment.paired_to %}
+            <tr>
+                <th>Paired With</th>
+                <td>{{ investment.paired_to.username }}</td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+
+    <div class="footer">
+        <p>This is an automatically generated statement. Please keep this for your records.</p>
+        <p>{{ site_name }} &copy; {% now "Y" %}. All rights reserved.</p>
+    </div>
+</body>
+</html> 

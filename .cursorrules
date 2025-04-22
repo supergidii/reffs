@@ -1,0 +1,168 @@
+**Referral Investment System: Full Project Summary**
+
+---
+
+## 📄 1. System Overview
+This project is a queue-based referral investment platform. Users can invest, refer others, earn referral bonuses, and get matched with matured investments in a structured pairing queue. The system pays out users after maturity and confirmation, with referral bonuses and interest logic incorporated.
+
+---
+
+## 🧰 2. Backend System (Django)
+
+### ✅ **Key Models**
+
+#### **User** (custom user model)
+- id, username, email, phone_number, password
+- referral_code (unique)
+- referred_by (FK to User)
+- referral_earnings
+
+#### **Investment**
+- id, user (FK)
+- amount
+- created_at
+- maturity_period (days)
+- status: [pending, matured, paired, completed]
+- paired_to (FK to another User)
+- return_amount (includes 2% interest per day)
+- referral_bonus_used (amount redeemed from referral_earnings)
+- is_confirmed (by the receiver)
+
+#### **Payment**
+- id, from_user, to_user, investment (FK)
+- amount
+- confirmed_at
+
+#### **Queue**
+- id, user, amount_remaining, created_at
+
+#### **ReferralHistory** (NEW for tracking)
+- id, referrer (FK), referred (FK), amount_invested
+- bonus_earned
+- status (pending/used)
+- used_at (timestamp when redeemed)
+
+---
+
+### ⚖️ **Backend Logic & Flow**
+
+#### 1. **User Registration/Login**
+- User signs up using a referral link (?ref=CODE)
+- Unique referral_code generated
+- referred_by field is saved
+
+#### 2. **Referral Earnings Logic**
+- When a referred user invests, 3% of the investment goes to referrer's `referral_earnings`
+- Logged in `ReferralHistory`
+
+#### 3. **Investment Logic**
+- User places an investment
+- System checks: If referral_earnings ≥ 0 and investment >= referral_earnings:
+  - Add `referral_earnings` to return_amount
+  - Reset referral_earnings to 0
+  - Mark related ReferralHistory as used
+- Return = amount + 2% per day * period
+
+#### 4. **Daily Maturity Job**
+- Check all investments that reached maturity
+- Move them to Queue with their return amount
+- Mark status = "matured"
+
+#### 5. **Daily Pairing Job**
+- Get matured users from Queue
+- Pair them with new investors (status=pending)
+- Rules:
+  - Wait for matured investor to confirm payment before starting countdown for new investor
+  - Partial matching handled with `amount_remaining`
+
+#### 6. **Payment Confirmation**
+- Receiver confirms payment
+- Payment entry created, `is_confirmed=True`, timestamp logged
+- Payer's investment countdown begins
+
+---
+
+## 👁️ 3. Frontend Pages (React / Django Templates)
+
+### 🔍 **Navigation Bar**
+- Dashboard
+- Buy Shares
+- Sell Shares
+- Referrals
+- Account
+- Avatar (Profile, Logout)
+
+### 📊 Dashboard
+- Total Referral Earnings
+- Total Returns
+- Active Investments
+- Pending Payments
+- Queue Position
+- Recent Investments Table
+- Referral Link with Copy Button
+
+### 📈 Buy Shares
+- Form:
+  - Amount
+  - Maturity Period (dropdown)
+  - Submit Button: Place Bid
+
+### 📉 Sell Shares
+- Table:
+  - Amount to Receive
+  - Paired Investor Name
+  - Phone
+  - Date
+  - Status
+  - Confirm Button
+
+### 🤵 Referrals
+- Referral Link (top of page)
+- Table:
+  - Referred User
+  - Phone
+  - Status (Active/Inactive)
+  - Earnings
+  - Date
+
+### 👤 Account
+#### Register:
+- Username, Email, Phone, Password, Confirm Password
+
+#### Login:
+- Phone Number
+- Password
+
+---
+
+## 📊 4. PDF Statement & Email
+- Generate downloadable PDF with investment breakdown
+- Auto-email user when investment matures with:
+  - Principal, Interest, Referral Bonus, Total Return
+
+---
+
+## 📅 5. Daily Jobs
+- `check_matured_investments()`: Updates Queue
+- `run_pairing_job()`: Matches users and updates statuses
+- `send_maturity_email()`: Emails matured investment breakdown
+
+---
+
+## 🧵 6. Security & Validation
+- JWT authentication
+- Input validation on all forms
+- Prevent referral abuse (self-referrals, duplicate bonuses)
+
+---
+
+## ⚙️ 7. Future Enhancements
+- Wallet system
+- Mobile-friendly PWA
+- KYC verification
+- Admin dashboard
+- Support tickets system
+
+---
+
+Let me know which part you want to build first or generate code for!

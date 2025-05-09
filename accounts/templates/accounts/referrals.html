@@ -1,0 +1,184 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Referrals - Referral Investment System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <h2 class="mb-4">Referrals</h2>
+    </div>
+</div>
+
+<!-- Referral Link Card -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-link me-2"></i>
+                    Your Referral Link
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="input-group">
+                    <input type="text" class="form-control" value="{{ referral_link }}" id="referralLink" readonly>
+                    <button class="btn btn-primary" type="button" onclick="copyReferralLink()">
+                        <i class="fas fa-copy me-2"></i>Copy
+                    </button>
+                </div>
+                <small class="text-muted mt-2 d-block">
+                    Share this link with friends to earn 3% of their investments!
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Referral Statistics -->
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">
+                    <i class="fas fa-users text-primary me-2"></i>
+                    Total Referrals
+                </h5>
+                <h2 class="display-4">{{ total_referrals }}</h2>
+                <p class="text-muted">People you've referred</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">
+                    <i class="fas fa-dollar-sign text-success me-2"></i>
+                    Total Earnings
+                </h5>
+                <h2 class="display-4">${{ total_earnings }}</h2>
+                <p class="text-muted">From referral bonuses</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">
+                    <i class="fas fa-gift text-warning me-2"></i>
+                    Available Bonus
+                </h5>
+                <h2 class="display-4">${{ available_bonus }}</h2>
+                <p class="text-muted">Ready to use</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Referral History -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>
+                    Referral History
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Referred User</th>
+                                <th>Phone</th>
+                                <th>Amount Invested</th>
+                                <th>Bonus Earned</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for referral in referral_history %}
+                            <tr>
+                                <td>{{ referral.created_at|date:"M d, Y" }}</td>
+                                <td>{{ referral.referred.username }}</td>
+                                <td>{{ referral.referred.phone_number }}</td>
+                                <td>${{ referral.amount_invested }}</td>
+                                <td>${{ referral.bonus_earned }}</td>
+                                <td>
+                                    <span class="badge bg-{{ referral.status|lower }}">
+                                        {{ referral.status }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center">No referral history available</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- How It Works -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    How Referrals Work
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-user-plus fa-3x text-primary mb-3"></i>
+                            <h5>1. Share Your Link</h5>
+                            <p class="text-muted">Share your unique referral link with friends and family</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-money-bill-wave fa-3x text-success mb-3"></i>
+                            <h5>2. They Invest</h5>
+                            <p class="text-muted">When they make an investment using your link</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-gift fa-3x text-warning mb-3"></i>
+                            <h5>3. You Earn</h5>
+                            <p class="text-muted">You automatically earn 3% of their investment amount</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyReferralLink() {
+    var copyText = document.getElementById("referralLink");
+    copyText.select();
+    copyText.setSelectionRange(0, 99999);
+    document.execCommand("copy");
+    
+    // Show feedback
+    var button = document.querySelector('.btn-primary');
+    var originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-check me-2"></i>Copied!';
+    setTimeout(function() {
+        button.innerHTML = originalText;
+    }, 2000);
+}
+</script>
+{% endblock %} 

@@ -1,35 +1,115 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { authService } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     phone: '',
     password: ''
   });
 
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState({
+    phone: '',
+    password: ''
+  });
   const [loading, setLoading] = useState(false);
 
+  const validatePhone = (phone) => {
+    if (!phone) {
+      return 'Phone number is required';
+    }
+    // Remove any spaces, dashes, or other non-digit characters
+    const cleanPhone = phone.replace(/\D/g, '');
+    
+    // Check if the cleaned number is 10 digits
+    if (cleanPhone.length !== 10) {
+      return 'Phone number must be 10 digits long';
+    }
+    
+    // Check if it starts with 07
+    if (!cleanPhone.startsWith('07')) {
+      return 'Phone number must start with 07';
+    }
+    
+    return '';
+  };
+
+  const validatePassword = (password) => {
+    if (!password) {
+      return 'Password is required';
+    }
+    if (password.length < 8) {
+      return 'Password must be at least 8 characters long';
+    }
+    return '';
+  };
+
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
+    const { name, value } = e.target;
+    
+    // For phone number, only allow digits
+    if (name === 'phone') {
+      const cleanValue = value.replace(/\D/g, '');
+      setFormData(prev => ({
+        ...prev,
+        [name]: cleanValue
+      }));
+      setErrors(prev => ({
+        ...prev,
+        phone: validatePhone(cleanValue)
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+      if (name === 'password') {
+        setErrors(prev => ({
+          ...prev,
+          password: validatePassword(value)
+        }));
+      }
+    }
+  };
+
+  const validateForm = () => {
+    const phoneError = validatePhone(formData.phone);
+    const passwordError = validatePassword(formData.password);
+    
+    setErrors({
+      phone: phoneError,
+      password: passwordError
     });
-    setError(''); // Clear error when user types
+
+    return !phoneError && !passwordError;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
     setLoading(true);
-    setError('');
+    setErrors({});
     
     try {
-      await authService.login(formData.phone, formData.password);
-      navigate('/'); // Redirect to dashboard after successful login
-    } catch (error) {
-      setError(error.message || 'Invalid phone number or password');
+      const success = await login(formData.phone, formData.password);
+      if (success) {
+        navigate('/');
+      } else {
+        setErrors({
+          submit: 'Invalid phone number or password'
+        });
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setErrors({
+        submit: err.message || 'An error occurred during login'
+      });
     } finally {
       setLoading(false);
     }
@@ -63,8 +143,13 @@ const Login = () => {
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="07XXXXXXXX"
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className={`appearance-none relative block w-full px-3 py-2 border ${
+                  errors.phone ? 'border-red-300' : 'border-gray-300'
+                } rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
               />
+              {errors.phone && (
+                <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+              )}
             </div>
 
             <div>
@@ -78,33 +163,18 @@ const Login = () => {
                 required
                 value={formData.password}
                 onChange={handleChange}
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className={`appearance-none relative block w-full px-3 py-2 border ${
+                  errors.password ? 'border-red-300' : 'border-gray-300'
+                } rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
               />
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                Remember me
-              </label>
-            </div>
-
-            <div className="text-sm">
-              <Link to="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
-                Forgot your password?
-              </Link>
-            </div>
-          </div>
-
-          {error && (
-            <p className="text-sm text-red-600 text-center">{error}</p>
+          {errors.submit && (
+            <p className="text-sm text-red-600 text-center">{errors.submit}</p>
           )}
 
           <div>

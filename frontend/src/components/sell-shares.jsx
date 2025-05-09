@@ -1,35 +1,55 @@
+import AuthenticatedLayout from "./layout/authenticated-layout"
 import { Button } from "./ui/button"
 
-export default function SellShares({ data }) {
+export default function SellShares() {
+  const sellSharesData = [
+    {
+      amount: "$1,050.00",
+      investor: "Robert Brown",
+      phone: "(987) 654-3210",
+      date: "May 25, 2024",
+      status: "Pending",
+    },
+    // Add more data here if needed
+  ]
+
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm">
-      <h2 className="text-xl font-bold mb-4">Sell Shares</h2>
-      <div className="overflow-x-auto">
-        <table className="min-w-full">
-          <thead>
-            <tr className="text-left text-sm font-medium text-gray-700">
-              <th className="pb-2">Amount to be Paid</th>
-              <th className="pb-2">Investor</th>
-              <th className="pb-2">Date</th>
-              <th className="pb-2">Status</th>
-              <th className="pb-2">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((item, index) => (
-              <tr key={index} className="border-t border-gray-200">
-                <td className="py-3">{item.amount}</td>
-                <td className="py-3">{item.investor}</td>
-                <td className="py-3">{item.date}</td>
-                <td className="py-3">{item.status}</td>
-                <td className="py-3">
-                  <Button className="bg-blue-500 hover:bg-blue-600 text-white">Confirm</Button>
-                </td>
+    <AuthenticatedLayout>
+      <h1 className="text-4xl font-bold mb-8">Sell Shares</h1>
+
+      {/* Sell Shares Table */}
+      <div className="bg-white border rounded-lg shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px]">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Amount to Receive</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Paired Investor Name</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Phone Number</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Date</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Status</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sellSharesData.map((item, index) => (
+                <tr key={index} className="border-b">
+                  <td className="px-6 py-4 text-sm text-gray-900">{item.amount}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{item.investor}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{item.phone}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{item.date}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{item.status}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    <Button variant="outline" size="sm">
+                      Confirm
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
-  )
+    </AuthenticatedLayout>
+  );
 }

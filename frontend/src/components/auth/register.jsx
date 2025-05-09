@@ -83,7 +83,9 @@ const Register = () => {
       };
       delete apiData.phone;
       
+      console.log('Sending registration data:', apiData);
       const response = await authService.register(apiData);
+      console.log('Registration response:', response);
       
       if (response.access) {
         // Store the token
@@ -96,24 +98,55 @@ const Register = () => {
         });
       }
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('Registration error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+
       if (error.response?.data) {
         // Handle field-specific errors from the API
         const apiErrors = error.response.data;
         const formattedErrors = {};
         
+        // Handle general error message
+        if (apiErrors.error) {
+          setErrors({
+            submit: apiErrors.error
+          });
+          return;
+        }
+        
         Object.keys(apiErrors).forEach(key => {
+          // Map backend field names to frontend field names
+          const fieldMap = {
+            'phone_number': 'phone',
+            'password1': 'password',
+            'password2': 'confirmPassword'
+          };
+          const frontendField = fieldMap[key] || key;
+          
           if (Array.isArray(apiErrors[key])) {
-            formattedErrors[key] = apiErrors[key][0];
+            formattedErrors[frontendField] = apiErrors[key][0];
           } else {
-            formattedErrors[key] = apiErrors[key];
+            formattedErrors[frontendField] = apiErrors[key];
           }
         });
         
-        setErrors(formattedErrors);
+        if (Object.keys(formattedErrors).length > 0) {
+          setErrors(formattedErrors);
+        } else {
+          setErrors({
+            submit: 'Registration failed. Please check your input and try again.'
+          });
+        }
+      } else if (error.message) {
+        setErrors({
+          submit: error.message
+        });
       } else {
         setErrors({
-          submit: error.message || 'Registration failed. Please try again.'
+          submit: 'Registration failed. Please try again.'
         });
       }
     } finally {

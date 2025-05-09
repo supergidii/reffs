@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from .models import ReferralHistory, Investment, Payment, Queue, User
+from .models import ReferralHistory, Investment, User
 from django.utils import timezone
 from decimal import Decimal
 
@@ -43,8 +43,17 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return user
 
 class UserLoginSerializer(serializers.Serializer):
-    phone_number = serializers.CharField()
-    password = serializers.CharField(write_only=True)
+    phone_number = serializers.CharField(required=True)
+    password = serializers.CharField(required=True, write_only=True)
+
+    def validate(self, data):
+        phone_number = data.get('phone_number')
+        password = data.get('password')
+
+        if not phone_number or not password:
+            raise serializers.ValidationError('Both phone number and password are required.')
+
+        return data
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -59,18 +68,17 @@ class UserMinimalSerializer(serializers.ModelSerializer):
 
 class InvestmentSerializer(serializers.ModelSerializer):
     user = UserMinimalSerializer(read_only=True)
-    paired_to = UserMinimalSerializer(read_only=True)
     
     class Meta:
         model = Investment
         fields = [
             'id', 'user', 'amount', 'created_at', 'maturity_period',
-            'status', 'paired_to', 'return_amount', 'referral_bonus_used',
-            'is_confirmed'
+            'status', 'return_amount', 'referral_bonus_used',
+            'maturity_date'
         ]
         read_only_fields = [
-            'id', 'user', 'created_at', 'status', 'paired_to',
-            'return_amount', 'referral_bonus_used', 'is_confirmed'
+            'id', 'user', 'created_at', 'status',
+            'return_amount', 'referral_bonus_used', 'maturity_date'
         ]
 
     def validate_amount(self, value):
@@ -127,17 +135,6 @@ class InvestmentSerializer(serializers.ModelSerializer):
         investment.save()
         return investment
 
-class PaymentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Payment
-        fields = ('id', 'from_user', 'to_user', 'investment', 'amount', 'confirmed_at')
-        read_only_fields = ('from_user', 'to_user', 'investment', 'amount', 'confirmed_at')
-
-class QueueSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Queue
-        fields = ('id', 'user', 'amount_remaining', 'created_at')
-        read_only_fields = ('user', 'created_at')
 
 class ReferralHistorySerializer(serializers.ModelSerializer):
     class Meta:

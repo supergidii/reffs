@@ -1,0 +1,15 @@
+Dear {{ user.username }},
+
+This is a reminder that you have a pending payment for your investment pairing.
+
+Details:
+- Amount to Pay: {{ amount }}
+- Due Date: {{ due_date|date:"F j, Y" }}
+- Recipient: {{ matured_user.username }}
+
+Please make the payment as soon as possible to avoid any delays in your investment process.
+
+If you have already made the payment, please ignore this reminder.
+
+Best regards,
+The Investment Team 

@@ -1,0 +1,99 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}My Investments - Referral Investment System{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h2 class="mb-4">
+            <i class="fas fa-chart-line me-2"></i>My Investments
+        </h2>
+    </div>
+</div>
+
+<!-- Investment Statistics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <h5 class="card-title">Total Invested</h5>
+                <h3 class="card-text">${{ total_invested|floatformat:2 }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h5 class="card-title">Total Returns</h5>
+                <h3 class="card-text">${{ total_returns|floatformat:2 }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <h5 class="card-title">Active Investments</h5>
+                <h3 class="card-text">{{ active_investments }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <h5 class="card-title">Matured Investments</h5>
+                <h3 class="card-text">{{ matured_investments }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Investments Table -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Return Amount</th>
+                        <th>Maturity Period</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for investment in investments %}
+                    <tr>
+                        <td>{{ investment.created_at|date:"M d, Y" }}</td>
+                        <td>${{ investment.amount|floatformat:2 }}</td>
+                        <td>${{ investment.return_amount|floatformat:2 }}</td>
+                        <td>{{ investment.maturity_period }} days</td>
+                        <td>
+                            {% if investment.status == 'pending' %}
+                                <span class="badge bg-warning">Pending</span>
+                            {% elif investment.status == 'matured' %}
+                                <span class="badge bg-success">Matured</span>
+                            {% elif investment.status == 'paired' %}
+                                <span class="badge bg-info">Paired</span>
+                            {% elif investment.status == 'completed' %}
+                                <span class="badge bg-primary">Completed</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'investment_statement_pdf' investment.id %}" class="btn btn-sm btn-primary" target="_blank">
+                                <i class="fas fa-file-pdf me-1"></i> Statement
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center">No investments found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %} 

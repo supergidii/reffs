@@ -1,0 +1,161 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Dashboard - Referral Investment System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <h2 class="mb-4">Welcome, {{ user.username }}!</h2>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Investment Overview -->
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-chart-line text-primary me-2"></i>
+                    Total Investment
+                </h5>
+                <h3 class="card-text">${{ total_investment|default:"0.00" }}</h3>
+                <p class="text-muted">Active investments</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Referral Earnings -->
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-users text-success me-2"></i>
+                    Referral Earnings
+                </h5>
+                <h3 class="card-text">${{ referral_earnings|default:"0.00" }}</h3>
+                <p class="text-muted">Total earnings from referrals</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Returns -->
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-clock text-warning me-2"></i>
+                    Pending Returns
+                </h5>
+                <h3 class="card-text">${{ pending_returns|default:"0.00" }}</h3>
+                <p class="text-muted">Awaiting confirmation</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Queue Position -->
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-list-ol text-info me-2"></i>
+                    Queue Position
+                </h5>
+                <h3 class="card-text">{{ queue_position|default:"0" }}</h3>
+                <p class="text-muted">Current position in queue</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Investments -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>
+                    Recent Investments
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Return Amount</th>
+                                <th>Status</th>
+                                <th>Maturity Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for investment in recent_investments %}
+                            <tr>
+                                <td>{{ investment.created_at|date:"M d, Y" }}</td>
+                                <td>${{ investment.amount }}</td>
+                                <td>${{ investment.return_amount }}</td>
+                                <td>
+                                    <span class="badge bg-{{ investment.status|lower }}">
+                                        {{ investment.status }}
+                                    </span>
+                                </td>
+                                <td>{{ investment.maturity_date|date:"M d, Y" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">No investments yet</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Referral Link -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-link me-2"></i>
+                    Your Referral Link
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="input-group">
+                    <input type="text" class="form-control" value="{{ referral_link }}" id="referralLink" readonly>
+                    <button class="btn btn-primary" type="button" onclick="copyReferralLink()">
+                        <i class="fas fa-copy me-2"></i>Copy
+                    </button>
+                </div>
+                <small class="text-muted mt-2 d-block">
+                    Share this link with friends to earn 3% of their investments!
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyReferralLink() {
+    var copyText = document.getElementById("referralLink");
+    copyText.select();
+    copyText.setSelectionRange(0, 99999);
+    document.execCommand("copy");
+    
+    // Show feedback
+    var button = document.querySelector('.btn-primary');
+    var originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-check me-2"></i>Copied!';
+    setTimeout(function() {
+        button.innerHTML = originalText;
+    }, 2000);
+}
+</script>
+{% endblock %} 

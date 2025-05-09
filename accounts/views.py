@@ -18,10 +18,15 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from .serializers import (
     UserRegistrationSerializer, UserLoginSerializer, UserSerializer,
-    InvestmentSerializer, PaymentSerializer, QueueSerializer, ReferralHistorySerializer
+    InvestmentSerializer, ReferralHistorySerializer
 )
-from .models import User, Investment, Payment, Queue, ReferralHistory
+from .models import User, Investment, ReferralHistory, Payment
 from rest_framework.decorators import api_view, permission_classes
+from django.views.generic import TemplateView
+from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib import messages
+from django.db.models import Sum, Count, Avg
 
 # Create your views here.
 
@@ -30,42 +35,111 @@ class UserRegistrationView(generics.CreateAPIView):
     serializer_class = UserRegistrationSerializer
 
     def post(self, request, *args, **kwargs):
-        print("Registration request received:", request.data)  # Debug print
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            print("Serializer is valid")  # Debug print
-            user = serializer.save()
-            print("User created:", user.username)  # Debug print
-            refresh = RefreshToken.for_user(user)
-            response_data = {
-                'user': UserSerializer(user).data,
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-            }
-            print("Sending response:", response_data)  # Debug print
-            return Response(response_data, status=status.HTTP_201_CREATED)
-        print("Serializer errors:", serializer.errors)  # Debug print
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        print("\n=== Registration Request Debug ===")
+        print("Request data:", request.data)
+        print("Request headers:", request.headers)
+        print("Request method:", request.method)
+        print("Request content type:", request.content_type)
+        
+        # Validate required fields
+        required_fields = ['username', 'email', 'phone_number', 'password']
+        missing_fields = [field for field in required_fields if field not in request.data]
+        if missing_fields:
+            print("Missing required fields:", missing_fields)
+            return Response({
+                'error': f'Missing required fields: {", ".join(missing_fields)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate phone number format
+        phone_number = request.data.get('phone_number', '')
+        if not phone_number.startswith('07') or not phone_number.isdigit() or len(phone_number) != 10:
+            print("Invalid phone number format:", phone_number)
+            return Response({
+                'phone_number': ['Phone number must be in format 07XXXXXXXX']
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate email format
+        email = request.data.get('email', '')
+        if not '@' in email or not '.' in email:
+            print("Invalid email format:", email)
+            return Response({
+                'email': ['Please enter a valid email address']
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate password length
+        password = request.data.get('password', '')
+        if len(password) < 8:
+            print("Password too short:", len(password))
+            return Response({
+                'password': ['Password must be at least 8 characters long']
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            serializer = self.get_serializer(data=request.data)
+            if serializer.is_valid():
+                print("Serializer is valid")
+                try:
+                    user = serializer.save()
+                    print("User created successfully:", user.username)
+                    refresh = RefreshToken.for_user(user)
+                    response_data = {
+                        'user': UserSerializer(user).data,
+                        'refresh': str(refresh),
+                        'access': str(refresh.access_token),
+                    }
+                    print("Sending successful response")
+                    return Response(response_data, status=status.HTTP_201_CREATED)
+                except Exception as e:
+                    print("Error creating user:", str(e))
+                    print("Error type:", type(e).__name__)
+                    import traceback
+                    print("Traceback:", traceback.format_exc())
+                    return Response({
+                        'error': f'Failed to create user account: {str(e)}'
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            print("Serializer validation failed")
+            print("Serializer errors:", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print("Unexpected error during registration:", str(e))
+            print("Error type:", type(e).__name__)
+            import traceback
+            print("Traceback:", traceback.format_exc())
+            return Response({
+                'error': 'An unexpected error occurred during registration'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class UserLoginView(APIView):
     permission_classes = (AllowAny,)
     serializer_class = UserLoginSerializer
 
     def post(self, request):
+        print("Login request received:", request.data)  # Debug print
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
-            user = authenticate(
-                phone_number=serializer.validated_data['phone_number'],
-                password=serializer.validated_data['password']
-            )
-            if user:
-                refresh = RefreshToken.for_user(user)
-                return Response({
-                    'user': UserSerializer(user).data,
-                    'refresh': str(refresh),
-                    'access': str(refresh.access_token),
-                })
-            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+            print("Serializer is valid")  # Debug print
+            try:
+                user = authenticate(
+                    phone_number=serializer.validated_data['phone_number'],
+                    password=serializer.validated_data['password']
+                )
+                print("Authentication result:", user)  # Debug print
+                if user:
+                    refresh = RefreshToken.for_user(user)
+                    response_data = {
+                        'user': UserSerializer(user).data,
+                        'refresh': str(refresh),
+                        'access': str(refresh.access_token),
+                    }
+                    print("Sending response:", response_data)  # Debug print
+                    return Response(response_data)
+                print("Authentication failed")  # Debug print
+                return Response({'error': 'Invalid phone number or password'}, status=status.HTTP_401_UNAUTHORIZED)
+            except Exception as e:
+                print("Authentication error:", str(e))  # Debug print
+                return Response({'error': 'Authentication failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        print("Serializer errors:", serializer.errors)  # Debug print
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
@@ -164,45 +238,12 @@ class InvestmentListView(generics.ListAPIView):
     def get_queryset(self):
         return Investment.objects.filter(user=self.request.user)
 
-class PaymentConfirmView(APIView):
-    permission_classes = (IsAuthenticated,)
-    serializer_class = PaymentSerializer
-
-    @transaction.atomic
-    def post(self, request, investment_id):
-        try:
-            investment = Investment.objects.get(id=investment_id, paired_to=request.user)
-            
-            # Create payment record
-            payment = Payment.objects.create(
-                from_user=investment.paired_to,
-                to_user=investment.user,
-                investment=investment,
-                amount=investment.return_amount,
-                confirmed_at=timezone.now()
-            )
-            
-            # Update investment status
-            investment.is_confirmed = True
-            investment.save()
-            
-            return Response(PaymentSerializer(payment).data)
-        except Investment.DoesNotExist:
-            return Response({'error': 'Investment not found'}, status=status.HTTP_404_NOT_FOUND)
-
 class ReferralHistoryListView(generics.ListAPIView):
     permission_classes = (IsAuthenticated,)
     serializer_class = ReferralHistorySerializer
 
     def get_queryset(self):
         return ReferralHistory.objects.filter(referrer=self.request.user)
-
-class QueueListView(generics.ListAPIView):
-    permission_classes = (IsAuthenticated,)
-    serializer_class = QueueSerializer
-
-    def get_queryset(self):
-        return Queue.objects.filter(user=self.request.user)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -232,41 +273,29 @@ def create_investment(request):
                 investment.return_amount += request.user.referral_earnings
                 
                 # Reset user's referral earnings and mark related history as used
+                request.user.referral_earnings = 0
+                request.user.save()
+                
+                # Mark referral history as used
                 ReferralHistory.objects.filter(
                     referrer=request.user,
                     status='pending'
-                ).update(status='used', used_at=timezone.now())
-                
-                request.user.referral_earnings = 0
-                request.user.save()
+                ).update(
+                    status='used',
+                    used_at=timezone.now()
+                )
             
             investment.save()
             
-            # If user was referred, calculate referral bonus for referrer
-            if request.user.referred_by:
-                referral_bonus = investment.amount * 0.03  # 3%
-                request.user.referred_by.referral_earnings += referral_bonus
-                request.user.referred_by.save()
-                
-                # Create referral history entry
-                ReferralHistory.objects.create(
-                    referrer=request.user.referred_by,
-                    referred=request.user,
-                    amount_invested=investment.amount,
-                    bonus_earned=referral_bonus,
-                    status='pending'
-                )
-            
-            return Response(
-                InvestmentSerializer(investment).data,
-                status=status.HTTP_201_CREATED
-            )
+            return Response({
+                'message': 'Investment created successfully',
+                'investment': InvestmentSerializer(investment).data
+            }, status=status.HTTP_201_CREATED)
             
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return Response({
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class InvestmentStatementPDFView(APIView):
     permission_classes = [IsAuthenticated]
@@ -437,3 +466,363 @@ class ReferralStatementPDFView(APIView):
         # Build PDF
         doc.build(story)
         return response
+
+class DashboardView(LoginRequiredMixin, TemplateView):
+    template_name = 'accounts/dashboard.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        
+        # Get user's investments
+        investments = Investment.objects.filter(user=user)
+        
+        # Calculate total returns
+        total_returns = investments.filter(status='completed').aggregate(
+            total=Sum('return_amount')
+        )['total'] or Decimal('0.00')
+        
+        # Get active investments
+        active_investments = investments.filter(status__in=['pending', 'paired'])
+        
+        # Get pending payments
+        pending_payments = Payment.objects.filter(
+            from_user=user,
+            confirmed_at__isnull=True
+        )
+        
+        # Get queue position
+        queue_position = Queue.objects.filter(
+            created_at__lt=Queue.objects.filter(user=user).first().created_at
+        ).count() if Queue.objects.filter(user=user).exists() else 0
+        
+        context.update({
+            'total_referral_earnings': user.referral_earnings,
+            'total_returns': total_returns,
+            'active_investments': active_investments,
+            'pending_payments': pending_payments,
+            'queue_position': queue_position,
+            'recent_investments': investments.order_by('-created_at')[:5],
+            'referral_link': f"{self.request.scheme}://{self.request.get_host()}/register/?ref={user.referral_code}"
+        })
+        return context
+
+class BuySharesView(LoginRequiredMixin, TemplateView):
+    template_name = 'accounts/buy_shares.html'
+
+    def post(self, request, *args, **kwargs):
+        amount = Decimal(request.POST.get('amount', 0))
+        maturity_period = int(request.POST.get('maturity_period', 0))
+        
+        if amount <= 0 or maturity_period <= 0:
+            messages.error(request, 'Invalid amount or maturity period')
+            return redirect('buy_shares')
+        
+        # Create investment
+        investment = Investment.objects.create(
+            user=request.user,
+            amount=amount,
+            maturity_period=maturity_period
+        )
+        
+        messages.success(request, 'Investment placed successfully!')
+        return redirect('dashboard')
+
+class SellSharesView(LoginRequiredMixin, TemplateView):
+    template_name = 'accounts/sell_shares.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['payments'] = Payment.objects.filter(
+            to_user=self.request.user,
+            status='pending'
+        ).select_related('from_user', 'investment')
+        return context
+
+    def post(self, request, *args, **kwargs):
+        payment_id = request.POST.get('payment_id')
+        action = request.POST.get('action')  # 'confirm' or 'reject'
+        rejection_reason = request.POST.get('rejection_reason', '')
+        
+        try:
+            payment = Payment.objects.get(id=payment_id, to_user=request.user)
+            
+            if action == 'confirm':
+                payment.confirm()
+                messages.success(request, 'Payment confirmed successfully!')
+            elif action == 'reject':
+                payment.reject(rejection_reason)
+                messages.warning(request, 'Payment rejected.')
+            else:
+                messages.error(request, 'Invalid action')
+                
+        except Payment.DoesNotExist:
+            messages.error(request, 'Invalid payment')
+            
+        return redirect('sell_shares')
+
+class ReferralsView(LoginRequiredMixin, TemplateView):
+    template_name = 'accounts/referrals.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        context['referral_histories'] = ReferralHistory.objects.filter(referrer=user)
+        context['referral_link'] = f"{self.request.scheme}://{self.request.get_host()}/register/?ref={user.referral_code}"
+        return context
+
+class MyInvestmentsView(LoginRequiredMixin, TemplateView):
+    template_name = 'accounts/my_investments.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        
+        # Get all investments for the user
+        investments = Investment.objects.filter(user=user).order_by('-created_at')
+        
+        # Calculate statistics
+        total_invested = investments.aggregate(total=Sum('amount'))['total'] or 0
+        total_returns = investments.aggregate(total=Sum('return_amount'))['total'] or 0
+        active_investments = investments.filter(status='pending').count()
+        matured_investments = investments.filter(status='matured').count()
+        
+        context.update({
+            'investments': investments,
+            'total_invested': total_invested,
+            'total_returns': total_returns,
+            'active_investments': active_investments,
+            'matured_investments': matured_investments,
+        })
+        return context
+
+class CustomLoginView(LoginView):
+    template_name = 'accounts/login.html'
+    redirect_authenticated_user = True
+
+class CustomLogoutView(LogoutView):
+    next_page = 'login'
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def system_overview(request):
+    """Get comprehensive system overview data"""
+    # User Statistics
+    total_users = User.objects.count()
+    
+    # Investment Statistics
+    investments = Investment.objects.all()
+    total_investments = investments.count()
+    
+    # Investment Status Breakdown
+    status_counts = investments.values('status').annotate(
+        count=Count('id'),
+        total_amount=Sum('amount'),
+        avg_amount=Avg('amount')
+    )
+    
+    # Payment Statistics
+    payments = Payment.objects.all()
+    payment_stats = payments.aggregate(
+        total_count=Count('id'),
+        total_amount=Sum('amount'),
+        avg_amount=Avg('amount')
+    )
+    
+    # Queue Statistics
+    queue_stats = Queue.objects.aggregate(
+        total_count=Count('id'),
+        total_amount=Sum('amount_remaining'),
+        avg_amount=Avg('amount_remaining')
+    )
+    
+    # User Investment Details
+    user_details = []
+    for user in User.objects.all():
+        user_investments = Investment.objects.filter(user=user)
+        if user_investments.exists():
+            user_data = {
+                'username': user.username,
+                'phone_number': user.phone_number,
+                'total_investments': user_investments.count(),
+                'investments_by_status': {},
+                'payments': {
+                    'made': {
+                        'count': 0,
+                        'total': 0
+                    },
+                    'received': {
+                        'count': 0,
+                        'total': 0
+                    }
+                }
+            }
+            
+            # Investment amounts by status
+            for status in ['pending', 'matured', 'paired', 'completed']:
+                status_investments = user_investments.filter(status=status)
+                if status_investments.exists():
+                    total = status_investments.aggregate(total=Sum('amount'))['total']
+                    user_data['investments_by_status'][status] = {
+                        'count': status_investments.count(),
+                        'total': float(total)
+                    }
+            
+            # Payment details
+            payments_made = Payment.objects.filter(from_user=user)
+            payments_received = Payment.objects.filter(to_user=user)
+            
+            if payments_made.exists():
+                total_sent = payments_made.aggregate(total=Sum('amount'))['total']
+                user_data['payments']['made'] = {
+                    'count': payments_made.count(),
+                    'total': float(total_sent)
+                }
+            
+            if payments_received.exists():
+                total_received = payments_received.aggregate(total=Sum('amount'))['total']
+                user_data['payments']['received'] = {
+                    'count': payments_received.count(),
+                    'total': float(total_received)
+                }
+            
+            user_details.append(user_data)
+    
+    return Response({
+        'user_statistics': {
+            'total_users': total_users
+        },
+        'investment_statistics': {
+            'total_investments': total_investments,
+            'status_breakdown': list(status_counts)
+        },
+        'payment_statistics': {
+            'total_payments': payment_stats['total_count'],
+            'total_amount': float(payment_stats['total_amount']),
+            'average_amount': float(payment_stats['avg_amount'])
+        },
+        'queue_statistics': {
+            'total_entries': queue_stats['total_count'],
+            'total_amount': float(queue_stats['total_amount']),
+            'average_amount': float(queue_stats['avg_amount'])
+        },
+        'user_details': user_details
+    })
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_dashboard(request):
+    try:
+        print("Starting user_dashboard view")  # Debug log
+        
+        # Get user's investments
+        investments = Investment.objects.filter(user=request.user)
+        print(f"Found {investments.count()} investments")  # Debug log
+        
+        # Calculate statistics
+        total_returns = investments.filter(status='completed').aggregate(
+            total=Sum('return_amount')
+        )['total'] or 0
+        print(f"Total returns: {total_returns}")  # Debug log
+
+        # Get total referral earnings from ReferralHistory
+        total_referral_earnings = ReferralHistory.objects.filter(
+            referrer=request.user,
+            status='pending'
+        ).aggregate(
+            total=Sum('bonus_earned')
+        )['total'] or 0
+        print(f"Total referral earnings: {total_referral_earnings}")  # Debug log
+
+        # Get due earnings from matured investments
+        due_earnings = investments.filter(
+            status='matured'
+        ).aggregate(
+            total=Sum('return_amount')
+        )['total'] or 0
+        print(f"Due earnings: {due_earnings}")  # Debug log
+
+        # Get active investments count
+        active_investments = investments.filter(
+            status__in=['pending', 'paired']
+        ).count()
+        print(f"Active investments: {active_investments}")  # Debug log
+
+        # Get pending payments count
+        pending_payments = Payment.objects.filter(
+            to_user=request.user,
+            status='pending'
+        ).count()
+        print(f"Pending payments: {pending_payments}")  # Debug log
+
+        # Get recent investments
+        recent_investments = list(investments.order_by('-created_at')[:5].values(
+            'id', 'amount', 'status', 'created_at', 'return_amount',
+            'paired_to__username', 'payment_confirmed_at'
+        ))
+        print(f"Recent investments: {len(recent_investments)}")  # Debug log
+
+        # Get payment data for sell shares section
+        payments = list(Payment.objects.filter(
+            to_user=request.user,
+            status='pending'
+        ).select_related('from_user').values(
+            'id',
+            'amount',
+            'created_at',
+            'status',
+            'from_user__username',
+            'from_user__phone_number'
+        ).order_by('-created_at'))
+        print(f"Payments: {len(payments)}")  # Debug log
+
+        # Get referral data
+        referrals = list(ReferralHistory.objects.filter(referrer=request.user).select_related(
+            'referred'
+        ).values(
+            'referred__username',
+            'referred__phone_number',
+            'status',
+            'bonus_earned'
+        ))
+        print(f"Referrals: {len(referrals)}")  # Debug log
+
+        # Calculate investment status counts
+        investment_status_counts = {
+            'completed': investments.filter(status='completed').count(),
+            'pending': investments.filter(status='pending').count(),
+            'paired': investments.filter(status='paired').count(),
+            'matured': investments.filter(status='matured').count()
+        }
+        print(f"Investment status counts: {investment_status_counts}")  # Debug log
+
+        data = {
+            'statistics': {
+                'total_returns': float(total_returns),
+                'total_referral_earnings': float(total_referral_earnings),
+                'due_earnings': float(due_earnings),
+                'active_investments': active_investments,
+                'pending_payments': pending_payments
+            },
+            'investments': {
+                'recent': recent_investments,
+                'by_status': investment_status_counts
+            },
+            'payments': payments,  # Add payments data
+            'referral': {
+                'total_referrals': len(referrals),
+                'referrals': referrals
+            }
+        }
+        
+        print("Sending response data:", data)  # Debug log
+        return Response(data)
+        
+    except Exception as e:
+        import traceback
+        print(f"Dashboard error: {str(e)}")  # Error log
+        print("Traceback:", traceback.format_exc())  # Full traceback
+        return Response(
+            {'error': f'Failed to fetch dashboard data: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
